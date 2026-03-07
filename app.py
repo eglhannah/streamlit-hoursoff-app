@@ -1,6 +1,5 @@
 """
-Summer Camp Day-Off Scheduler — Streamlit App
-Run with:  streamlit run app.py
+Camp Carysbrook Day-Off Scheduler — Streamlit App
 """
 
 import io
@@ -9,18 +8,183 @@ import streamlit as st
 import pulp
 from collections import defaultdict
 
-# ── Page config ──────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="Camp Day-Off Scheduler",
-    page_icon="🏕️",
+    page_title="Camp Carysbrook · Staff Scheduler",
+    page_icon="🌲",
     layout="wide",
 )
 
-# ── Colour palette for days (up to 14) ───────────────────────────────────────
+# ── Carysbrook Brand CSS ──────────────────────────────────────────────────────
+st.markdown("""
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Lato:wght@300;400;600&display=swap');
+
+  html, body, [class*="css"] {
+      font-family: 'Lato', sans-serif;
+      background-color: #F5F0E8;
+      color: #2E2E2E;
+  }
+
+  #MainMenu {visibility: hidden;}
+  footer {visibility: hidden;}
+  header {visibility: hidden;}
+
+  /* ── Header banner ── */
+  .cc-header {
+      background: linear-gradient(135deg, #2D5A27 60%, #3D7035);
+      padding: 1.6rem 2rem;
+      border-radius: 10px;
+      margin-bottom: 1.8rem;
+      display: flex;
+      align-items: center;
+      gap: 1.4rem;
+      box-shadow: 0 3px 12px rgba(45,90,39,0.25);
+  }
+  .cc-header-text h1 {
+      font-family: 'Playfair Display', serif;
+      color: #FFFFFF;
+      font-size: 1.9rem;
+      margin: 0;
+      line-height: 1.2;
+  }
+  .cc-header-text p {
+      color: #C8DFC5;
+      font-size: 0.85rem;
+      margin: 0.25rem 0 0 0;
+      font-weight: 300;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+  }
+  .cc-icon { font-size: 2.8rem; }
+
+  /* ── Headings ── */
+  h2, h3 {
+      font-family: 'Playfair Display', serif !important;
+      color: #5C3317 !important;
+  }
+
+  /* ── Primary button ── */
+  .stButton > button[kind="primary"] {
+      background-color: #5C3317 !important;
+      border: none !important;
+      color: white !important;
+      font-family: 'Lato', sans-serif !important;
+      font-weight: 600 !important;
+      letter-spacing: 0.06em !important;
+      border-radius: 6px !important;
+      padding: 0.65rem 1.6rem !important;
+      transition: background-color 0.2s ease !important;
+  }
+  .stButton > button[kind="primary"]:hover {
+      background-color: #7A4420 !important;
+  }
+
+  /* ── Download buttons ── */
+  .stDownloadButton > button {
+      background-color: #FFFFFF !important;
+      border: 1.5px solid #2D5A27 !important;
+      color: #2D5A27 !important;
+      font-family: 'Lato', sans-serif !important;
+      font-weight: 600 !important;
+      border-radius: 6px !important;
+      transition: all 0.2s ease !important;
+  }
+  .stDownloadButton > button:hover {
+      background-color: #2D5A27 !important;
+      color: white !important;
+  }
+
+  /* ── Sidebar ── */
+  [data-testid="stSidebar"] {
+      background-color: #2D5A27 !important;
+  }
+  [data-testid="stSidebar"] * {
+      color: #E8F0E7 !important;
+  }
+  [data-testid="stSidebar"] h1,
+  [data-testid="stSidebar"] h2,
+  [data-testid="stSidebar"] h3 {
+      color: #FFFFFF !important;
+      font-family: 'Playfair Display', serif !important;
+  }
+  [data-testid="stSidebar"] hr {
+      border-color: #4A7A43 !important;
+  }
+  [data-testid="stSidebar"] code {
+      background-color: #1F3F1C !important;
+      color: #C8DFC5 !important;
+      border-radius: 4px;
+      padding: 0.2rem 0.4rem;
+  }
+  [data-testid="stSidebar"] .stDownloadButton > button {
+      background-color: #5C3317 !important;
+      border: none !important;
+      color: white !important;
+  }
+  [data-testid="stSidebar"] .stDownloadButton > button:hover {
+      background-color: #7A4420 !important;
+  }
+
+  /* ── File uploader ── */
+  [data-testid="stFileUploader"] {
+      background-color: #FFFFFF;
+      border: 2px dashed #2D5A27 !important;
+      border-radius: 8px;
+  }
+
+  /* ── Expander ── */
+  [data-testid="stExpander"] {
+      border: 1px solid #C8DFC5 !important;
+      border-radius: 8px !important;
+      background-color: #FFFFFF;
+  }
+
+  /* ── Alerts ── */
+  [data-testid="stAlert"] {
+      border-radius: 6px !important;
+  }
+
+  /* ── Cards / metric boxes ── */
+  [data-testid="stMetric"] {
+      background-color: #FFFFFF;
+      border: 1px solid #C8DFC5;
+      border-left: 4px solid #5C3317;
+      border-radius: 8px;
+      padding: 0.8rem 1rem;
+  }
+
+  /* ── Footer ── */
+  .cc-footer {
+      margin-top: 3rem;
+      padding-top: 1rem;
+      border-top: 1px solid #C8B89A;
+      text-align: center;
+      color: #9A7B5A;
+      font-size: 0.78rem;
+      letter-spacing: 0.05em;
+  }
+
+  /* ── Bar chart override colour ── */
+  [data-testid="stVegaLiteChart"] canvas { border-radius: 6px; }
+</style>
+""", unsafe_allow_html=True)
+
+# ── Header ────────────────────────────────────────────────────────────────────
+st.markdown("""
+<div class="cc-header">
+  <div class="cc-icon">🌲</div>
+  <div class="cc-header-text">
+    <h1>Camp Carysbrook · Staff Scheduler</h1>
+    <p>Days-off scheduling &nbsp;·&nbsp; Est. 1923 &nbsp;·&nbsp; Riner, Virginia</p>
+  </div>
+</div>
+""", unsafe_allow_html=True)
+
+# ── Colour palette for days — green → brown tones ─────────────────────────────
 DAY_COLOURS = [
-    "#4E79A7", "#F28E2B", "#E15759", "#76B7B2", "#59A14F",
-    "#EDC948", "#B07AA1", "#FF9DA7", "#9C755F", "#BAB0AC",
-    "#86BCB6", "#D37295", "#A0CBE8", "#FFBE7D",
+    "#2D5A27", "#5C3317", "#6B9E64", "#7A4420", "#4A7A43",
+    "#9A6040", "#8FB887", "#C8936A", "#355E2E", "#B87040",
+    "#A3C49B", "#D4956A", "#527A4C", "#E8B088",
 ]
 
 REQUIRED_COLS = {"Name", "Cabin", "Leadership", "Activity1", "Activity2", "Age"}
@@ -78,11 +242,9 @@ def schedule(df: pd.DataFrame, num_days: int, days_per: int) -> pd.DataFrame:
     prob = pulp.LpProblem("CampDayOff", pulp.LpMinimize)
     x = {(i, d): pulp.LpVariable(f"x_{i}_{d}", cat="Binary") for i in range(n) for d in days}
 
-    # Each counselor gets exactly `days_per` days off
     for i in range(n):
         prob += pulp.lpSum(x[i, d] for d in days) == days_per
 
-    # Cabin: no two cabin-mates off on the same day
     cabin_groups = defaultdict(list)
     for i, row in df.iterrows():
         if row["Cabin"]:
@@ -92,7 +254,6 @@ def schedule(df: pd.DataFrame, num_days: int, days_per: int) -> pd.DataFrame:
             for d in days:
                 prob += pulp.lpSum(x[idx, d] for idx in members) <= 1
 
-    # Activity: ≤50% of an activity's counselors off on same day
     act_groups = defaultdict(set)
     for i, row in df.iterrows():
         for col in ["Activity1", "Activity2"]:
@@ -105,7 +266,6 @@ def schedule(df: pd.DataFrame, num_days: int, days_per: int) -> pd.DataFrame:
             for d in days:
                 prob += pulp.lpSum(x[idx, d] for idx in members) <= cap
 
-    # Leadership: ≤50% of a role off on same day
     lead_groups = defaultdict(list)
     for i, row in df.iterrows():
         if row["Leadership"]:
@@ -116,7 +276,6 @@ def schedule(df: pd.DataFrame, num_days: int, days_per: int) -> pd.DataFrame:
             for d in days:
                 prob += pulp.lpSum(x[idx, d] for idx in members) <= cap
 
-    # Soft: minimise peak seniors-per-day
     ages = df["Age"].tolist()
     max_age = max(ages) if ages else 0
     seniors = [i for i in range(n) if ages[i] >= max_age - 2]
@@ -150,11 +309,9 @@ def schedule(df: pd.DataFrame, num_days: int, days_per: int) -> pd.DataFrame:
 
 def validate(result: pd.DataFrame):
     issues = []
-    # Cabin conflicts
     for (cabin, day), grp in result[result["Cabin"] != ""].groupby(["Cabin", "Day Off"]):
         if len(grp) > 1:
             issues.append(f"Cabin **{cabin}** — day {day}: {', '.join(grp['Name'])}")
-    # Activity conflicts
     act_totals = defaultdict(set)
     act_day = defaultdict(lambda: defaultdict(list))
     for _, row in result.iterrows():
@@ -169,7 +326,6 @@ def validate(result: pd.DataFrame):
         for day, names in day_map.items():
             if len(names) > total / 2:
                 issues.append(f"Activity **{act}** — {len(names)}/{total} off on day {day}")
-    # Leadership conflicts
     lead_totals = defaultdict(set)
     lead_day = defaultdict(lambda: defaultdict(list))
     for _, row in result.iterrows():
@@ -212,9 +368,9 @@ def to_excel(df: pd.DataFrame) -> bytes:
     palette = {int(d): DAY_COLOURS[i % len(DAY_COLOURS)] for i, d in enumerate(days)}
 
     headers = ["Name", "Cabin", "Leadership", "Activity1", "Activity2", "Age", "Day Off"]
-    header_fill = PatternFill("solid", fgColor="2C3E50")
-    header_font = Font(bold=True, color="FFFFFF", name="Arial", size=11)
-    thin = Side(style="thin", color="CCCCCC")
+    header_fill = PatternFill("solid", fgColor="2D5A27")
+    header_font = Font(bold=True, color="FFFFFF", name="Georgia", size=11)
+    thin = Side(style="thin", color="C8B89A")
     border = Border(left=thin, right=thin, top=thin, bottom=thin)
 
     for col_idx, h in enumerate(headers, 1):
@@ -226,14 +382,14 @@ def to_excel(df: pd.DataFrame) -> bytes:
 
     for row_idx, (_, row) in enumerate(df[headers].iterrows(), 2):
         day_val = row["Day Off"]
-        hex_colour = palette.get(int(day_val), "FFFFFF").lstrip("#") if not pd.isna(day_val) else "FFFFFF"
+        hex_colour = palette.get(int(day_val), "FFFFFF").lstrip("#") if not pd.isna(day_val) else "F5F0E8"
         r = int(hex_colour[0:2], 16)
         g = int(hex_colour[2:4], 16)
         b = int(hex_colour[4:6], 16)
         brightness = (r * 299 + g * 587 + b * 114) / 1000
         text_colour = "000000" if brightness > 128 else "FFFFFF"
         fill = PatternFill("solid", fgColor=hex_colour)
-        font = Font(name="Arial", size=10, color=text_colour)
+        font = Font(name="Calibri", size=10, color=text_colour)
         for col_idx, h in enumerate(headers, 1):
             cell = ws.cell(row=row_idx, column=col_idx, value=row[h])
             cell.fill = fill
@@ -241,46 +397,57 @@ def to_excel(df: pd.DataFrame) -> bytes:
             cell.alignment = Alignment(horizontal="center", vertical="center")
             cell.border = border
 
-    # Column widths
-    col_widths = [20, 14, 14, 14, 14, 8, 10]
+    col_widths = [22, 16, 14, 16, 16, 8, 10]
     for i, w in enumerate(col_widths, 1):
         ws.column_dimensions[get_column_letter(i)].width = w
-    ws.row_dimensions[1].height = 22
+    ws.row_dimensions[1].height = 24
 
     buf = io.BytesIO()
     wb.save(buf)
     return buf.getvalue()
 
 
-# ── UI ────────────────────────────────────────────────────────────────────────
-
-st.title("🏕️ Camp Day-Off Scheduler")
-st.caption("Upload your counselor spreadsheet, configure the schedule window, and download a colour-coded schedule.")
-
 # ── Sidebar ───────────────────────────────────────────────────────────────────
 with st.sidebar:
-    st.header("⚙️ Settings")
-    num_days = st.slider("Number of days in schedule window", min_value=3, max_value=14, value=7,
-                         help="How many days the schedule spans (e.g. 7 for one week).")
+    st.markdown("## ⚙️ Settings")
+    num_days = st.slider(
+        "Days in schedule window",
+        min_value=3, max_value=7, value=5,
+        help="How many days the schedule spans (e.g. 5 for one week)."
+    )
     days_per = st.slider("Days off per counselor", min_value=1, max_value=3, value=1)
 
     st.divider()
-    st.header("📋 Template")
-    st.write("Need the right column format? Download the template:")
-    template_df = pd.DataFrame(TEMPLATE_DATA,
-                               columns=["Name","Cabin","Leadership","Activity1","Activity2","Age"])
+
+    st.markdown("## 📋 Template")
+    st.write("Download the template to see the required column format:")
+    template_df = pd.DataFrame(
+        TEMPLATE_DATA,
+        columns=["Name", "Cabin", "Leadership", "Activity1", "Activity2", "Age"]
+    )
     template_bytes = io.BytesIO()
     template_df.to_csv(template_bytes, index=False)
-    st.download_button("⬇️ Download template CSV", template_bytes.getvalue(),
-                       file_name="counselor_template.csv", mime="text/csv")
+    st.download_button(
+        "⬇️ Download template CSV",
+        template_bytes.getvalue(),
+        file_name="carysbrook_counselor_template.csv",
+        mime="text/csv",
+        use_container_width=True,
+    )
 
     st.divider()
+
     st.markdown("**Required columns:**")
     st.code("Name, Cabin, Leadership,\nActivity1, Activity2, Age")
     st.caption("Leave cells blank where not applicable.")
 
+
 # ── Main ──────────────────────────────────────────────────────────────────────
-uploaded = st.file_uploader("Upload counselor file (.csv or .xlsx)", type=["csv","xlsx"])
+uploaded = st.file_uploader(
+    "Upload your counselor file (.csv or .xlsx)",
+    type=["csv", "xlsx"],
+    help="File must include the columns listed in the sidebar."
+)
 
 df_raw = None
 if uploaded:
@@ -291,22 +458,27 @@ if uploaded:
             df_raw = pd.read_csv(uploaded)
         missing = REQUIRED_COLS - set(df_raw.columns)
         if missing:
-            st.error(f"Missing columns: {', '.join(missing)}. Please check your file matches the template.")
+            st.error(f"Missing columns: {', '.join(sorted(missing))}. Please check your file matches the template.")
             df_raw = None
         else:
-            st.success(f"✅ Loaded **{len(df_raw)} counselors** from {uploaded.name}")
+            col1, col2, col3 = st.columns(3)
+            col1.metric("Counselors", len(df_raw))
+            col2.metric("Cabins", df_raw["Cabin"].replace("", pd.NA).dropna().nunique())
+            col3.metric("Activities", pd.concat([df_raw["Activity1"], df_raw["Activity2"]]).replace("", pd.NA).dropna().nunique())
+            st.success(f"✅ **{uploaded.name}** loaded successfully.")
     except Exception as e:
         st.error(f"Could not read file: {e}")
 else:
-    st.info("👆 Upload a file above, or use the template from the sidebar to get started.")
+    st.info("👆 Upload your counselor spreadsheet above, or download the template from the sidebar to get started.")
 
 if df_raw is not None:
     with st.expander("Preview uploaded data", expanded=False):
         st.dataframe(df_raw, use_container_width=True)
 
+    st.write("")
     if st.button("🗓️ Generate Schedule", type="primary", use_container_width=True):
         df = normalise(df_raw)
-        with st.spinner("Solving schedule constraints…"):
+        with st.spinner("Finding the best schedule…"):
             try:
                 result = schedule(df, num_days=num_days, days_per=days_per)
             except RuntimeError as e:
@@ -315,7 +487,6 @@ if df_raw is not None:
 
         st.success("Schedule generated!")
 
-        # Validation
         issues = validate(result)
         if issues:
             with st.expander("⚠️ Constraint warnings", expanded=True):
@@ -324,18 +495,15 @@ if df_raw is not None:
         else:
             st.info("✅ All cabin, activity, and leadership constraints satisfied.")
 
-        # Colour map
         days_sorted = sorted(result["Day Off"].dropna().unique())
         palette = {int(d): DAY_COLOURS[i % len(DAY_COLOURS)] for i, d in enumerate(days_sorted)}
 
-        # Summary row counts
-        st.subheader("📊 Counselors off per day")
+        st.markdown("### 📊 Counselors off per day")
         counts = result.groupby("Day Off")["Name"].count().reset_index()
-        counts.columns = ["Day", "Count"]
-        st.bar_chart(counts.set_index("Day"))
+        counts.columns = ["Day", "Counselors Off"]
+        st.bar_chart(counts.set_index("Day"), color="#2D5A27")
 
-        # Colour-coded table
-        st.subheader("📅 Full Schedule")
+        st.markdown("### 📅 Full Schedule")
         display_cols = ["Name", "Cabin", "Leadership", "Activity1", "Activity2", "Age", "Day Off"]
         styled = (
             result[display_cols]
@@ -345,20 +513,33 @@ if df_raw is not None:
         )
         st.dataframe(styled, use_container_width=True, height=600)
 
-        # Download
-        st.subheader("⬇️ Download")
+        st.markdown("### ⬇️ Download")
         col1, col2 = st.columns(2)
         with col1:
             csv_bytes = result[display_cols].to_csv(index=False).encode()
-            st.download_button("Download as CSV", csv_bytes,
-                               file_name="day_off_schedule.csv", mime="text/csv",
-                               use_container_width=True)
+            st.download_button(
+                "Download as CSV",
+                csv_bytes,
+                file_name="carysbrook_day_off_schedule.csv",
+                mime="text/csv",
+                use_container_width=True,
+            )
         with col2:
             try:
                 xl_bytes = to_excel(result)
-                st.download_button("Download as Excel (colour-coded)", xl_bytes,
-                                   file_name="day_off_schedule.xlsx",
-                                   mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                                   use_container_width=True)
+                st.download_button(
+                    "Download as Excel (colour-coded)",
+                    xl_bytes,
+                    file_name="carysbrook_day_off_schedule.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    use_container_width=True,
+                )
             except ImportError:
                 st.warning("Install `openpyxl` for Excel export.")
+
+# ── Footer ────────────────────────────────────────────────────────────────────
+st.markdown("""
+<div class="cc-footer">
+  Camp Carysbrook &nbsp;·&nbsp; 3500 Camp Carysbrook Road, Riner, VA 24149 &nbsp;·&nbsp; Est. 1923
+</div>
+""", unsafe_allow_html=True)
