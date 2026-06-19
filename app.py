@@ -278,7 +278,7 @@ def schedule(df: pd.DataFrame, num_days: int, days_per: int) -> pd.DataFrame:
 
     ages = df["Age"].tolist()
     max_age = max(ages) if ages else 0
-    seniors = [i for i in range(n) if ages[i] >= max_age - 2]
+    seniors = [i for i in range(n) if ages[i] >= 20]
     if seniors:
         peak = pulp.LpVariable("peak_seniors", lowBound=0)
         for d in days:
